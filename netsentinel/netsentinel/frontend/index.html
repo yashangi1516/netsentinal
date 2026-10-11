@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NetSentinel: AI Network Intrusion Visualizer</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom styling -->
+    <link rel="stylesheet" href="/static/style.css">
+    <!-- D3.js library -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+    <!-- Top premium navigation bar -->
+    <header class="navbar">
+        <div class="brand">
+            <i class="fa-solid fa-shield-halved logo-icon"></i>
+            <span class="logo-title">NET<span class="highlight">SENTINEL</span></span>
+        </div>
+        <div class="system-status">
+            <span id="connection-status" class="status-badge disconnected">
+                <span class="pulse-dot"></span>
+                Disconnected
+            </span>
+            <span id="db-status" class="status-badge normal">
+                <i class="fa-solid fa-database"></i> DB Online
+            </span>
+            <span class="ai-status">
+                <i class="fa-solid fa-brain"></i> Autoencoder + Isolation Forest Active
+            </span>
+        </div>
+    </header>
+
+    <main class="dashboard-grid">
+        <!-- COLUMN 1: Network Topology Visualizer (Major Widget) -->
+        <section class="panel topology-panel">
+            <div class="panel-header">
+                <h2><i class="fa-solid fa-network-wired"></i> Live Network Topology</h2>
+                <div class="controls">
+                    <button id="reset-zoom-btn" title="Reset Zoom"><i class="fa-solid fa-compress"></i></button>
+                    <button id="clear-graph-btn" title="Clear Inactive Devices"><i class="fa-solid fa-trash-can"></i></button>
+                </div>
+            </div>
+            <div class="topology-container" id="topology-canvas">
+                <!-- D3 Force Graph renders here -->
+                <div class="graph-legend">
+                    <span class="legend-item"><span class="color-dot normal-dot"></span> Normal Node</span>
+                    <span class="legend-item"><span class="color-dot threat-dot"></span> Threat Node (Red Glow)</span>
+                </div>
+                <div class="canvas-loading" id="graph-loader">
+                    <div class="spinner"></div>
+                    <span>Initializing topology force simulation...</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- COLUMN 2: Panels Right (Threat Metrics, Active Threat Lists, Live Packet Streams) -->
+        <div class="sidebar-grid">
+            <!-- Global Metric Counters -->
+            <div class="metrics-row">
+                <div class="metric-card normal-card">
+                    <div class="card-icon"><i class="fa-solid fa-check-double"></i></div>
+                    <div class="metric-info">
+                        <span class="metric-label">Total Handled</span>
+                        <h3 id="metric-total">0</h3>
+                    </div>
+                </div>
+                <div class="metric-card anomaly-card">
+                    <div class="card-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                    <div class="metric-info">
+                        <span class="metric-label">Anomalies Detected</span>
+                        <h3 id="metric-anomalies" class="danger-text">0</h3>
+                    </div>
+                </div>
+                <div class="metric-card alert-rate-card">
+                    <div class="card-icon"><i class="fa-solid fa-gauge-high"></i></div>
+                    <div class="metric-info">
+                        <span class="metric-label">Avg Threat Score</span>
+                        <h3 id="metric-threat-score">0.0</h3>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Real-Time Alerts Panel -->
+            <section class="panel alerts-panel">
+                <div class="panel-header">
+                    <h2><i class="fa-solid fa-bell"></i> Critical Threat Alerts</h2>
+                    <span class="badge danger-badge" id="alert-counter-badge">0 NEW</span>
+                </div>
+                <div class="alerts-list" id="alerts-container">
+                    <div class="no-alerts-msg">
+                        <i class="fa-solid fa-shield-heart"></i>
+                        <p>No threats detected. Network operations normal.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Dynamic Threat Heatmap / Ports Chart -->
+            <section class="panel chart-panel">
+                <div class="panel-header">
+                    <h2><i class="fa-solid fa-chart-bar"></i> Target Port Distribution</h2>
+                </div>
+                <div class="port-chart-container" id="port-bars-container">
+                    <!-- Dynamic port bars will render here -->
+                    <div class="port-bar-wrapper">
+                        <span class="port-label">Port 80 (HTTP)</span>
+                        <div class="port-progress-bg">
+                            <div class="port-progress-fill" style="width: 0%"></div>
+                        </div>
+                        <span class="port-count">0</span>
+                    </div>
+                    <div class="port-bar-wrapper">
+                        <span class="port-label">Port 443 (HTTPS)</span>
+                        <div class="port-progress-bg">
+                            <div class="port-progress-fill" style="width: 0%"></div>
+                        </div>
+                        <span class="port-count">0</span>
+                    </div>
+                    <div class="port-bar-wrapper">
+                        <span class="port-label">Port 22 (SSH)</span>
+                        <div class="port-progress-bg">
+                            <div class="port-progress-fill" style="width: 0%"></div>
+                        </div>
+                        <span class="port-count">0</span>
+                    </div>
+                    <div class="port-bar-wrapper">
+                        <span class="port-label">Port 3389 (RDP)</span>
+                        <div class="port-progress-bg">
+                            <div class="port-progress-fill" style="width: 0%"></div>
+                        </div>
+                        <span class="port-count">0</span>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- FULL WIDTH: Live Packet Stream Table -->
+        <section class="panel stream-panel">
+            <div class="panel-header">
+                <h2><i class="fa-solid fa-network-wired"></i> Live Ingestion Log</h2>
+                <div class="filter-controls">
+                    <select id="protocol-filter">
+                        <option value="ALL">All Protocols</option>
+                        <option value="TCP">TCP</option>
+                        <option value="UDP">UDP</option>
+                        <option value="ICMP">ICMP</option>
+                        <option value="OTHER">Other</option>
+                    </select>
+                    <select id="severity-filter">
+                        <option value="ALL">All Levels</option>
+                        <option value="Normal">Normal</option>
+                        <option value="Low">Low Anomaly</option>
+                        <option value="Medium">Medium Threat</option>
+                        <option value="High">High Intrusion</option>
+                    </select>
+                </div>
+            </div>
+            <div class="table-container">
+                <table class="stream-table">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Protocol</th>
+                            <th>Source IP</th>
+                            <th>Destination IP</th>
+                            <th>Ports (S/D)</th>
+                            <th>Size</th>
+                            <th>Entropy</th>
+                            <th>IF Score</th>
+                            <th>AE Error</th>
+                            <th>Threat Score</th>
+                            <th>Level</th>
+                        </tr>
+                    </thead>
+                    <tbody id="packet-stream-body">
+                        <!-- Dynamic packet records -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <!-- Node Info Tooltip / Detail Modal -->
+    <div id="tooltip" class="graph-tooltip"></div>
+
+    <footer class="footer">
+        <p>&copy; 2026 NetSentinel Security Management Suite | Powered by Unsupervised Isolation Forests & PyTorch Autoencoders</p>
+    </footer>
+
+    <!-- Application Logic -->
+    <script src="/static/app.js"></script>
+</body>
+</html>
